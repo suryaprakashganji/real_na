@@ -1,0 +1,54 @@
+#%RAML 1.0
+title: NA
+version: 1.0
+description: "Project for Practice"
+/storedata:
+  post:
+    queryParameters:
+      Id:
+        type: number
+        required: true
+        description: "Kindly Provide Id in number"
+    headers:
+      System: string
+    responses:
+      200:
+        body:
+          application/json:
+            example:
+              {
+                  "TransactionIdentifier": "123456789",
+                  "SubscriberIdentifier": "6265347624",
+                  "SubscriberIdentifierType": "mobile",
+                  "ProductIdentifier": "12334",
+                  "PricingPlanIdentifier": "9898787",
+                  "PartnerPricePlanName": "XYZ_Daily",
+                  "PaymentIndentifier": "DCB",
+                  "ChargePrice": "1000"
+              }
+/fetechdetails:
+  get:
+    queryParameters:
+      Id:
+        type: number
+        required: true
+    headers:
+       System: string
+       Id: number
+       PaymentIndentifier: string
+    responses:
+      200:
+        body:
+          application/json:
+            example:
+              {
+                "TransactionIdentifier": "123456789",
+                "SubscriberIdentifier": "6265347624",
+                "SubscriberIdentifierType": "mobile",
+                "ProductIdentifier": "12334",
+                "PricingPlanIdentifier": "9898787",
+                "PartnerPricePlanName": "XYZ_Daily",
+                "PaymentIndentifier": "DCB",
+                "ChargePrice": "1000"
+              }
+          

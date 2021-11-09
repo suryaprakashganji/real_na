@@ -1,0 +1,282 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns:validation="http://www.mulesoft.org/schema/mule/validation" xmlns:servicenow="http://www.mulesoft.org/schema/mule/servicenow" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:db="http://www.mulesoft.org/schema/mule/db" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/servicenow http://www.mulesoft.org/schema/mule/servicenow/current/mule-servicenow.xsd
+http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mule/validation/current/mule-validation.xsd">
+    <http:listener-config name="na-httpListenerConfig">
+        <http:listener-connection host="0.0.0.0" port="8081" />
+    </http:listener-config>
+    <apikit:config name="na-config" api="na.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <db:config name="Database_Config" doc:name="Database Config" doc:id="0773eba8-2a05-46be-a704-2fee639f0d17" >
+		<db:generic-connection url="jdbc:postgresql://localhost:5432/mule" driverClassName="org.postgresql.Driver" user="postgres" password="password"/>
+	</db:config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="4b423ef4-a288-4e38-908f-6759e01f88bf" >
+		<http:request-connection host="localhost" port="8081" />
+	</http:request-config>
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="f298eadd-65f7-4fdf-8487-608d3a84ad3d" >
+		<salesforce:basic-connection username="surya@na.com" password="Balasiri@4" securityToken="8h9ijriHhtlTJB4gRSffa27Q" url="https://login.salesforce.com/services/Soap/u/52.0" />
+	</salesforce:sfdc-config>
+	<db:config name="Database_Config1" doc:name="Database Config" doc:id="44f21dc2-f8a5-4de6-86c6-dd07d4bbfeed" >
+		<db:generic-connection url="jdbc:postgresql://localhost:5432/mule" driverClassName="org.postgresql.Driver" user="postgres" password="password" />
+	</db:config>
+	<validation:config name="Validation_Config" doc:name="Validation Config" doc:id="61922422-7e63-4676-95e8-4ff6e0b72af8" />
+	<flow name="na-main">
+        <http:listener config-ref="na-httpListenerConfig" path="/api/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:router config-ref="na-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:BAD_REQUEST">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Bad request"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:METHOD_NOT_ALLOWED">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Method not allowed"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">405</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_ACCEPTABLE">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not acceptable"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">406</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:UNSUPPORTED_MEDIA_TYPE">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Unsupported media type"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">415</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate type="APIKIT:NOT_IMPLEMENTED">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Not Implemented"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">501</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+	<flow name="na-console">
+        <http:listener config-ref="na-httpListenerConfig" path="/console/*">
+            <http:response statusCode="#[vars.httpStatus default 200]">
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:response>
+            <http:error-response statusCode="#[vars.httpStatus default 500]">
+                <http:body>#[payload]</http:body>
+                <http:headers>#[vars.outboundHeaders default {}]</http:headers>
+            </http:error-response>
+        </http:listener>
+        <apikit:console config-ref="na-config" />
+        <error-handler>
+            <on-error-propagate type="APIKIT:NOT_FOUND">
+                <ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{message: "Resource not found"}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">404</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+    <flow name="get:\fetechdetails:na-config">
+		<set-variable value='#[message.attributes.headers.System as String default "All"]' doc:name="Set Variable" doc:id="5c853fa4-920a-408a-9564-b3dbebe3b020" variableName="System"/>
+		<choice doc:name="Choice" doc:id="e04f5206-0d39-44c8-ad98-6004ca7268e8" >
+			<when expression='#[vars.System == "Database"]'>
+				<db:select doc:name="Select" doc:id="13e8c9ef-be88-47ac-b646-5be16c8cdec0" config-ref="Database_Config1">
+					<db:sql ><![CDATA[SELECT "TransactionIdentifier", "SubscriberIdentifier", "SubscriberIdentifierType", "ProductIdentifier", "PricingPlanIdentifier", "PartnerPricePlanName", "PaymentIndentifier", "ChargePrice"
+	FROM mule_schema."DCB";]]></db:sql>
+				</db:select>
+				<ee:transform doc:name="Transform Message" doc:id="b390ed04-74c6-41ac-88cc-293295031422" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="248895d1-6c3c-4ef0-85fc-f5eda18663b3" message="#[payload]"/>
+			</when>
+			<when expression='#[vars.System == "Salesforce"]'>
+				<salesforce:query doc:name="Query" doc:id="44c28516-9376-470b-a07c-4a603a0e59b4" config-ref="Salesforce_Config" >
+					<salesforce:salesforce-query ><![CDATA[select TransactionIdentifier__c, SubscriberIdentifier__c, SubscriberIdentifierType__c, ProductIdentifier__c, PricingPlanIdentifier__c, PartnerPricePlanName__c, PaymentIndentifier__c, ChargePrice__c from Storedata__c]]></salesforce:salesforce-query>
+				</salesforce:query>
+				<ee:transform doc:name="Transform Message" doc:id="b2da67b1-aba6-4287-be2e-83bc1ea37bcb" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload	
+
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="fa714585-c148-4872-bc15-98f07d7525ee" message="#[payload]"/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="c0e758ae-89c5-4828-b0bf-7d509dee9d6e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message": "This is Default message,Go for Database or Salesforce"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="bc197db3-4262-4c01-bff0-d7a2b038d021" message="#[payload]"/>
+			</otherwise>
+		</choice>
+    </flow>
+    <flow name="post:\storedata:na-config">
+		<set-variable value='#[message.attributes.headers.System as String default "All"]' doc:name="Set Variable" doc:id="9350bc10-0b23-49b1-9c06-0698acb5c51e" variableName="System"/>
+		<choice doc:name="Choice" doc:id="20c2e1b8-3ac9-4f05-adce-d7591c8f0936" >
+			<when expression='#[vars.System == "Database"]'>
+				<ee:transform xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+            <ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+  TransactionIdentifier: "123456789",
+  SubscriberIdentifier: "6265347624",
+  SubscriberIdentifierType: "mobile",
+  ProductIdentifier: "12334",
+  PricingPlanIdentifier: "9898787",
+  PartnerPricePlanName: "XYZ_Daily",
+  PaymentIndentifier: "DCB",
+  ChargePrice: "1000"
+}]]></ee:set-payload>
+				<ee:set-attributes><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"System": attributes.Headers.'System'
+}]]></ee:set-attributes>
+            </ee:message>
+        </ee:transform>
+				<db:insert doc:name="Insert" doc:id="05bff4f3-6914-4dfd-a6f7-832c43e3d103" config-ref="Database_Config">
+			<db:sql><![CDATA[INSERT INTO mule_schema."DCB"(
+	"TransactionIdentifier", "SubscriberIdentifier", "SubscriberIdentifierType", "ProductIdentifier", "PricingPlanIdentifier", "PartnerPricePlanName", "PaymentIndentifier", "ChargePrice")
+	VALUES (:TransactionIdentifier, :SubscriberIdentifier, :SubscriberIdentifierType, :ProductIdentifier, :PricingPlanIdentifier, :PartnerPricePlanName, :PaymentIndentifier, :ChargePrice);]]></db:sql>
+					<db:input-parameters ><![CDATA[#[{'TransactionIdentifier':payload.'TransactionIdentifier','SubscriberIdentifier':payload.'SubscriberIdentifier','SubscriberIdentifierType':payload.'SubscriberIdentifierType','ProductIdentifier':payload.'ProductIdentifier','PricingPlanIdentifier':payload.'PricingPlanIdentifier','PartnerPricePlanName':payload.'PartnerPricePlanName','PaymentIndentifier':payload.'PaymentIndentifier','ChargePrice':payload.'ChargePrice'}]]]></db:input-parameters>
+		</db:insert>
+				<ee:transform doc:name="Transform Message" doc:id="f6eddbe0-b142-4798-b2bb-3be0f6845f52">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="dfa7e97e-7f9a-4132-8c96-5cf6bcd7a4a6" message="#[payload]"/>
+			</when>
+			<when expression='#[vars.System == "Salesforce"]'>
+				<ee:transform doc:name="Transform Message" doc:id="ca66aef5-c0c7-42a4-ae54-4282888b5330" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+[{
+	TransactionIdentifier__c: "123456789",
+	SubscriberIdentifier__c: "6265347624",
+	SubscriberIdentifierType__c: "mobile",
+	ProductIdentifier__c: "12334",
+	PricingPlanIdentifier__c: "9898787",
+	PartnerPricePlanName__c: "XYZ_Daily",
+	PaymentIndentifier__c: "DCB",
+	ChargePrice__c: "1000"
+}]]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce:create doc:name="Create" doc:id="d225d938-3c73-41aa-b926-271d76c76be3" config-ref="Salesforce_Config" type="Storedata__c"/>
+				<ee:transform doc:name="Transform Message" doc:id="1ec35c38-85a3-4adc-a98f-25041e381d18" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="ce9e7720-b2af-4f80-ac7f-f7d9574b92c8" message="#[payload]"/>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="ce887d9a-3b50-4720-b5a6-30549201f5fc" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"Message": "This is Default Message"
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="97737deb-709c-4280-9439-50405be4b5bc" message="#[payload]"/>
+			</otherwise>
+		</choice>
+		<logger level="INFO" doc:name="Logger" doc:id="70002c81-aca7-47b9-a29a-5814b93992b8" message="#[payload]"/>
+    </flow>
+</mule>
